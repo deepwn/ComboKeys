@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>迷宫逃脱游戏</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Microsoft YaHei", Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        overflow-x: auto;
+        overflow-y: auto;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        padding: 20px 0;
+      }
+
+      .game-layout {
+        display: flex;
+        gap: 20px;
+        max-width: 1400px;
+        width: 100%;
+        padding: 20px;
+      }
+
+      /* 左侧面板：游戏说明 */
+      .left-panel {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.8);
+        border: 3px solid #4caf50;
+        border-radius: 10px;
+        padding: 20px;
+        height: fit-content;
+      }
+
+      /* 中间游戏区域 */
+      .game-area {
+        flex: 2;
+        display: flex;
+        justify-content: center;
+      }
+
+      .game-board {
+        background: rgba(0, 0, 0, 0.8);
+        border: 3px solid #4caf50;
+        border-radius: 10px;
+        padding: 20px;
+        position: relative;
+        width: fit-content;
+        height: fit-content;
+      }
+
+      /* 右侧面板：任务目标 */
+      .right-panel {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.8);
+        border: 3px solid #4caf50;
+        border-radius: 10px;
+        padding: 20px;
+        height: fit-content;
+      }
+
+      .maze {
+        display: grid;
+        grid-template-columns: repeat(33, 20px);
+        grid-template-rows: repeat(33, 20px);
+        gap: 1px;
+        background: #333;
+        margin-bottom: 10px;
+        width: fit-content;
+        height: fit-content;
+      }
+
+      .cell {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* 不可破坏边界墙 */
+      .wall {
+        background: #666;
+        border: 1px solid #444;
+      }
+
+      /* 可破坏箱子 */
+      .destructible {
+        background: #8b4513;
+        border: 1px solid #654321;
+        position: relative;
+      }
+
+      /* 通道 */
+      .path {
+        background: #f0f0f0;
+      }
+
+      /* 玩家、出口和钥匙使用SVG，设置与地板相同的白色背景 */
+      .player,
+      .exit,
+      .key {
+        background: #f0f0f0;
+      }
+
+      /* SVG图标通用样式 */
+      .cell svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* 面板内容样式 */
+      .panel-section {
+        margin-bottom: 20px;
+      }
+
+      .panel-section h3 {
+        color: #4caf50;
+        margin-bottom: 10px;
+        font-size: 18px;
+      }
+
+      .panel-section h4 {
+        color: #4caf50;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .panel-section p {
+        color: #ccc;
+        line-height: 1.4;
+        margin-bottom: 10px;
+      }
+
+      .timer {
+        font-size: 18px;
+        color: #ffd700;
+        text-align: center;
+        padding: 12px 24px;
+        background: rgba(255, 215, 0, 0.1);
+        border-radius: 8px;
+        border: 2px solid #ffd700;
+        width: 100%;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .timer.warning {
+        color: #ff4444;
+        animation: blink 0.5s infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0.3;
+        }
+      }
+
+      .status {
+        margin-bottom: 15px;
+      }
+
+      .status-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        color: #ccc;
+      }
+
+      /* 任务列表样式 */
+      .task-list {
+        margin: 10px 0;
+      }
+
+      .task-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+        color: #ccc;
+        font-size: 14px;
+      }
+
+      .task-checkbox {
+        margin-right: 8px;
+        font-size: 16px;
+        color: #666;
+      }
+
+      .task-checkbox.completed {
+        color: #4caf50;
+      }
+
+      .task-text {
+        flex: 1;
+      }
+
+      .task-item.completed .task-text {
+        color: #4caf50;
+        text-decoration: line-through;
+      }
+
+      .controls {
+        margin-top: 20px;
+      }
+
+      .control-section {
+        margin-bottom: 15px;
+      }
+
+      .control-section h4 {
+        color: #4caf50;
+        margin-bottom: 8px;
+      }
+
+      .control-item {
+        padding: 3px 0;
+        font-size: 14px;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal-content {
+        background: #2a2a2a;
+        border: 3px solid #4caf50;
+        border-radius: 15px;
+        padding: 30px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+      }
+
+      .modal h2 {
+        color: #4caf50;
+        margin-bottom: 20px;
+      }
+
+      .evacuation-code {
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffd700;
+        background: rgba(255, 215, 0, 0.1);
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+        letter-spacing: 3px;
+        border: 2px dashed #ffd700;
+        text-align: center;
+      }
+
+      .code-input-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin: 20px 0;
+      }
+
+      .code-input-box {
+        width: 40px;
+        height: 40px;
+        border: 2px solid #666;
+        background: #444;
+        font-size: 20px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        position: relative;
+      }
+
+      .code-input-box .placeholder {
+        color: #888;
+        opacity: 0.7;
+      }
+
+      .code-input-box .user-input {
+        color: white;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .code-input-box.active {
+        border-color: #4caf50;
+        background: rgba(76, 175, 80, 0.1);
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+      }
+
+      .code-input-box.active .placeholder {
+        color: #aaa;
+        opacity: 1;
+      }
+
+      .code-input-box.correct {
+        border-color: #4caf50;
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+      }
+
+      .code-input-box.correct .placeholder {
+        color: #4caf50;
+        opacity: 1;
+      }
+
+      .code-input-box.correct .user-input {
+        color: #4caf50;
+      }
+
+      .code-input-box.incorrect {
+        border-color: #ff4444;
+        background: rgba(255, 68, 68, 0.2);
+        animation: shake 0.5s ease-in-out;
+      }
+
+      .code-input-box.incorrect .placeholder {
+        color: #ff4444;
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        75% {
+          transform: translateX(5px);
+        }
+      }
+
+      .evacuation-instructions {
+        font-size: 14px;
+        color: #ccc;
+        margin: 10px 0;
+        text-align: center;
+      }
+
+      .evacuation-success {
+        color: #4caf50;
+        font-weight: bold;
+        text-align: center;
+        margin: 10px 0;
+      }
+
+      .btn {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 10px;
+        transition: background 0.3s;
+      }
+
+      .btn:hover {
+        background: #45a049;
+      }
+
+      .game-over {
+        color: #ff4444;
+      }
+
+      /* 无敌模式背景闪烁效果 */
+      body.invincible-background {
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #ffeaa7, #dda0dd);
+        background-size: 400% 400%;
+        animation: rainbow 2s ease infinite;
+      }
+
+      @keyframes rainbow {
+        0%,
+        100% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+      }
+
+      /* 钥匙样式 */
+      .key {
+        background: transparent;
+      }
+
+      /* 钥匙提示效果 - 统一样式（无敌模式和TIPS模式） */
+      .key-box,
+      .tips-key-highlight {
+        position: relative;
+        background: rgba(255, 215, 0, 0.6) !important;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+      }
+
+      .key-box::after,
+      .tips-key-highlight::after {
+        content: "🔑";
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        font-size: 8px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        padding: 1px;
+      }
+
+      /* TIPS模式额外添加脉冲动画 */
+      .tips-key-highlight {
+        animation: keyPulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes keyPulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      /* EASY模式 - 最佳路径高亮 */
+      .easy-path-highlight {
+        background: rgba(76, 175, 80, 0.4) !important;
+      }
+
+      .easy-box-highlight {
+        background: rgba(76, 175, 80, 0.3) !important;
+        border: 2px solid rgba(76, 175, 80, 0.6) !important;
+      }
+
+      /* 通知消息样式 - 移到右上角 */
+      .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(76, 175, 80, 0.9);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 2000;
+        max-width: 300px;
+        animation: slideInRight 0.3s ease-out;
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      .pause-overlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 100;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        color: #ffd700;
+      }
+
+      .start-overlay {
+        display: flex;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .instructions {
+        background: rgba(76, 175, 80, 0.1);
+        border: 1px solid #4caf50;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+
+      .instructions h3 {
+        color: #4caf50;
+        margin-bottom: 10px;
+      }
+
+      .task-info {
+        background: rgba(255, 215, 0, 0.1);
+        border: 1px solid #ffd700;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+
+      .task-info h3 {
+        color: #ffd700;
+        margin-bottom: 10px;
+      }
+
+      /* 计时器容器样式 */
+      .timer-container {
+        margin-bottom: 15px;
+      }
+
+      /* 开始按钮样式 */
+      .start-btn {
+        background: linear-gradient(135deg, #4caf50, #45a049);
+        color: white;
+        border: none;
+        padding: 16px 32px;
+        font-size: 18px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        min-width: 160px;
+      }
+
+      .start-btn:hover {
+        background: linear-gradient(135deg, #45a049, #4caf50);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .start-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      /* 彩带飘落动画 */
+      @keyframes confetti-fall {
+        0% {
+          transform: translateY(-10px) rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(100vh) rotate(720deg);
+          opacity: 0;
+        }
+      }
+
+      /* 响应式设计 */
+      @media (max-width: 1200px) {
+        .game-layout {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .left-panel,
+        .right-panel {
+          flex: none;
+          width: 100%;
+          max-width: 600px;
+          margin-bottom: 20px;
+        }
+
+        .game-area {
+          flex: none;
+          margin-bottom: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-layout">
+      <!-- 左侧面板：游戏说明 -->
+      <div class="left-panel">
+        <div class="panel-section">
+          <h3>🎮 游戏说明</h3>
+          <p>使用方向键移动人物，空格键攻击面前砖块（需3次攻击），找到钥匙🔑才能开门逃脱！</p>
+        </div>
+
+        <div class="panel-section">
+          <h4>🎮 基础操作</h4>
+          <div class="control-item">↑↓←→ - 移动</div>
+          <div class="control-item">空格 - 攻击砖块</div>
+          <div class="control-item">ESC - 暂停/继续</div>
+        </div>
+
+        <div class="panel-section">
+          <h4>📋 图例</h4>
+          <div class="control-item">😊 - 玩家（嘴部代表面朝方向）</div>
+          <div class="control-item">⬜ - 不可破坏边界墙（灰色）</div>
+          <div class="control-item">🟤 - 可破坏箱子（3次攻击）</div>
+          <div class="control-item">🔑 - 钥匙（金色，开门必需）</div>
+          <div class="control-item">💊 - 大力丸（一击必杀，可用10次）</div>
+          <div class="control-item">🚪 - 撤离点（灰色则需钥匙）</div>
+        </div>
+      </div>
+
+      <!-- 中间游戏区域 -->
+      <div class="game-area">
+        <div class="game-board">
+          <div
+            id="maze"
+            class="maze"
+          ></div>
+          <div
+            class="pause-overlay"
+            id="pauseOverlay"
+          >
+            <div>游戏已暂停 - 按ESC继续</div>
+          </div>
+          <div
+            class="start-overlay"
+            id="startOverlay"
+          >
+            <button
+              class="btn start-btn"
+              id="startBtn"
+              onclick="window.game.startGame()"
+            >
+              🚀 开始游戏
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧面板：任务目标 -->
+      <div class="right-panel">
+        <div class="panel-section">
+          <h3>🎯 任务目标</h3>
+          <div class="timer-container">
+            <div
+              class="timer"
+              id="timer"
+            >
+              180秒
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="task-list">
+            <div
+              class="task-item"
+              id="task-find-key"
+            >
+              <span class="task-checkbox">☐</span>
+              <span class="task-text">寻找隐藏钥匙</span>
+            </div>
+            <div
+              class="task-item"
+              id="task-reach-exit"
+            >
+              <span class="task-checkbox">☐</span>
+              <span class="task-text">前往撤离点</span>
+            </div>
+            <div
+              class="task-item"
+              id="task-input-code"
+            >
+              <span class="task-checkbox">☐</span>
+              <span class="task-text">输入撤离口令</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h4>📊 状态信息</h4>
+          <div class="status-item">
+            <span>位置:</span>
+            <span id="position">1, 1</span>
+          </div>
+          <div class="status-item">
+            <span>钥匙:</span>
+            <span id="keyStatus">未获得</span>
+          </div>
+          <div class="status-item">
+            <span>状态:</span>
+            <span id="playerStatus">普通</span>
+          </div>
+          <div class="status-item">
+            <span>游戏:</span>
+            <span id="gameStatus">进行中</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 胜利模态框 -->
+    <div
+      class="modal"
+      id="winModal"
+    >
+      <div class="modal-content">
+        <h2>🎉 到达撤离点！</h2>
+        <p>请按顺序输入撤离口令完成任务：</p>
+        <div
+          class="evacuation-code"
+          id="evacuationCode"
+          style="display: none"
+        ></div>
+        <div class="evacuation-instructions">按顺序输入灰色字符，输入正确时会变绿</div>
+        <div
+          class="code-input-container"
+          id="codeInputContainer"
+        >
+          <div
+            class="code-input-box"
+            data-index="0"
+          ></div>
+          <div
+            class="code-input-box"
+            data-index="1"
+          ></div>
+          <div
+            class="code-input-box"
+            data-index="2"
+          ></div>
+          <div
+            class="code-input-box"
+            data-index="3"
+          ></div>
+          <div
+            class="code-input-box"
+            data-index="4"
+          ></div>
+          <div
+            class="code-input-box"
+            data-index="5"
+          ></div>
+        </div>
+        <div class="evacuation-instructions">输入完成后按 ESC 键确认撤离</div>
+        <div
+          class="evacuation-success"
+          id="evacuationSuccess"
+          style="display: none"
+        >
+          ✅ 撤离口号验证成功！按ESC键完成撤离
+        </div>
+        <button
+          class="btn"
+          onclick="restartGame()"
+        >
+          重新游戏
+        </button>
+      </div>
+    </div>
+
+    <!-- 失败模态框 -->
+    <div
+      class="modal"
+      id="loseModal"
+    >
+      <div class="modal-content game-over">
+        <h2>⏰ 时间到！</h2>
+        <p>很遗憾，您没能在规定时间内完成任务。</p>
+        <button
+          class="btn"
+          onclick="restartGame()"
+        >
+          重新挑战
+        </button>
+      </div>
+    </div>
+
+    <script src="ComboKey.js"></script>
+    <script>
+      class MazeGame {
+        constructor() {
+          this.boardSize = 33;
+          this.timeLeft = 180; // 180秒
+          this.gameActive = false; // 初始状态不激活，需要点击开始
+          this.gameStarted = false; // 游戏是否已开始
+          this.isPaused = false;
+          this.isInvincible = false;
+          this.player = { x: 1, y: 1, direction: "right" }; // 添加方向属性
+          this.exit = { x: this.boardSize - 2, y: this.boardSize - 2 }; // 确保出口在边界内
+          this.hasKey = false; // 玩家是否拥有钥匙
+          this.keyPosition = null; // 钥匙当前位置 (如果掉落)
+          this.keyBoxPosition = null; // 钥匙藏在哪个箱子里
+          this.tipsMode = false; // TIPS模式 - 显示钥匙位置
+          this.easyMode = false; // EASY模式 - 显示最佳路径
+          this.bestPath = []; // 最佳路径坐标数组
+
+          // 自动模式相关
+          this.isAutoMode = false; // 自动模式状态
+          this.autoPath = []; // 自动行走路径
+          this.autoCurrentStep = 0; // 当前自动行走步骤
+          this.autoInterval = null; // 自动行走定时器
+
+          // 撤离验证相关
+          this.evacuationCode = "";
+          this.currentInputIndex = 0;
+          this.userInput = [];
+          this.isEvacuating = false;
+
+          // 大力丸相关
+          this.powerPills = []; // 大力丸位置数组
+          this.hasPowerPill = false; // 是否拥有大力丸效果
+          this.powerPillCount = 0; // 大力丸剩余使用次数
+
+          // 创建迷宫地图
+          this.maze = this.generateMaze();
+
+          // 初始化游戏界面
+          this.initializeGame();
+          this.setupControls();
+          // 不自动启动计时器，需要点击开始按钮
+        }
+
+        generateMaze() {
+          // 第一步：使用深度优先搜索算法生成迷宫路径
+          const maze = [];
+
+          // 初始化所有为墙壁
+          for (let y = 0; y < this.boardSize; y++) {
+            maze[y] = [];
+            for (let x = 0; x < this.boardSize; x++) {
+              if (x === 0 || x === this.boardSize - 1 || y === 0 || y === this.boardSize - 1) {
+                // 边界墙壁不可破坏
+                maze[y][x] = { type: "wall" };
+              } else {
+                // 内部先设为墙壁，稍后会生成路径
+                maze[y][x] = { type: "wall" };
+              }
+            }
+          }
+
+          // 使用深度优先搜索生成迷宫路径
+          const visited = new Set();
+          const stack = [];
+
+          // 从起始点开始
+          const startX = 1,
+            startY = 1;
+          maze[startY][startX] = { type: "path" };
+          visited.add(`${startX},${startY}`);
+          stack.push([startX, startY]);
+
+          const directions = [
+            [0, 2],
+            [2, 0],
+            [0, -2],
+            [-2, 0],
+          ]; // 每次移动2格
+
+          while (stack.length > 0) {
+            const [currentX, currentY] = stack[stack.length - 1];
+            const neighbors = [];
+
+            // 检查所有可能的方向
+            for (const [dx, dy] of directions) {
+              const newX = currentX + dx;
+              const newY = currentY + dy;
+
+              if (newX > 0 && newX < this.boardSize - 1 && newY > 0 && newY < this.boardSize - 1 && !visited.has(`${newX},${newY}`)) {
+                neighbors.push([newX, newY, dx, dy]);
+              }
+            }
+
+            if (neighbors.length > 0) {
+              // 随机选择一个邻居
+              const [nextX, nextY, dx, dy] = neighbors[Math.floor(Math.random() * neighbors.length)];
+
+              // 创建到邻居的路径（包括中间的墙）
+              const wallX = currentX + dx / 2;
+              const wallY = currentY + dy / 2;
+
+              maze[nextY][nextX] = { type: "path" };
+              maze[wallY][wallX] = { type: "path" };
+
+              visited.add(`${nextX},${nextY}`);
+              stack.push([nextX, nextY]);
+            } else {
+              stack.pop();
+            }
+          }
+
+          // 确保终点是可达的，并在终点周围创建路径
+          maze[this.exit.y][this.exit.x] = { type: "path" };
+          // 确保终点周围有路径连接
+          const exitConnections = [
+            [this.exit.x - 1, this.exit.y],
+            [this.exit.x, this.exit.y - 1],
+            [this.exit.x - 1, this.exit.y - 1],
+          ];
+
+          exitConnections.forEach(([x, y]) => {
+            if (x > 0 && x < this.boardSize - 1 && y > 0 && y < this.boardSize - 1) {
+              maze[y][x] = { type: "path" };
+            }
+          });
+
+          // 创建从起点到终点的基本连接路径（沿边缘）
+          // 从起点向右的路径
+          for (let x = 1; x <= Math.min(5, this.boardSize - 2); x++) {
+            maze[1][x] = { type: "path" };
+          }
+          // 从起点向下的路径
+          for (let y = 1; y <= Math.min(5, this.boardSize - 2); y++) {
+            maze[y][1] = { type: "path" };
+          }
+          // 终点区域的连接路径
+          for (let x = Math.max(1, this.exit.x - 3); x <= this.exit.x; x++) {
+            maze[this.exit.y][x] = { type: "path" };
+          }
+          for (let y = Math.max(1, this.exit.y - 3); y <= this.exit.y; y++) {
+            maze[y][this.exit.x] = { type: "path" };
+          }
+
+          // 添加一些额外的路径以增加游戏可玩性
+          for (let i = 0; i < 30; i++) {
+            const x = Math.floor(Math.random() * (this.boardSize - 2)) + 1;
+            const y = Math.floor(Math.random() * (this.boardSize - 2)) + 1;
+            if (Math.random() < 0.15) {
+              // 15%概率创建额外路径
+              maze[y][x] = { type: "path" };
+            }
+          }
+
+          // 第二步：在路径上随机放置可破坏箱子
+          const pathCells = [];
+          for (let y = 1; y < this.boardSize - 1; y++) {
+            for (let x = 1; x < this.boardSize - 1; x++) {
+              if (maze[y][x].type === "path" && !(x === this.player.x && y === this.player.y) && !(x === this.exit.x && y === this.exit.y)) {
+                pathCells.push([x, y]);
+              }
+            }
+          }
+
+          // 随机选择30%的路径放置箱子
+          const boxCount = Math.floor(pathCells.length * 0.3);
+          const shuffledPaths = pathCells.sort(() => Math.random() - 0.5);
+
+          for (let i = 0; i < boxCount && i < shuffledPaths.length; i++) {
+            const [x, y] = shuffledPaths[i];
+            maze[y][x] = { type: "destructible", health: 3 };
+          }
+
+          // 第三步：选择一个可达的箱子放置钥匙
+          const boxCells = [];
+          for (let y = 1; y < this.boardSize - 1; y++) {
+            for (let x = 1; x < this.boardSize - 1; x++) {
+              if (maze[y][x].type === "destructible") {
+                // 确保箱子周围至少有一个路径，使其可达
+                const neighbors = [
+                  [x - 1, y],
+                  [x + 1, y],
+                  [x, y - 1],
+                  [x, y + 1],
+                ];
+                const hasPathNeighbor = neighbors.some(([nx, ny]) => {
+                  return nx >= 0 && nx < this.boardSize && ny >= 0 && ny < this.boardSize && maze[ny][nx].type === "path";
+                });
+                if (hasPathNeighbor) {
+                  boxCells.push([x, y]);
+                }
+              }
+            }
+          }
+
+          if (boxCells.length > 0) {
+            const randomBox = boxCells[Math.floor(Math.random() * boxCells.length)];
+            this.keyBoxPosition = { x: randomBox[0], y: randomBox[1] };
+            maze[randomBox[1]][randomBox[0]].hasKey = true;
+          } else {
+            // 如果没有合适的箱子，在任意路径位置创建一个钥匙箱子
+            if (pathCells.length > 0) {
+              const randomPath = pathCells[Math.floor(Math.random() * pathCells.length)];
+              const [x, y] = randomPath;
+              maze[y][x] = { type: "destructible", health: 3, hasKey: true };
+              this.keyBoxPosition = { x, y };
+            }
+          }
+
+          // 第四步：在空路径上随机放置5个大力丸
+          this.generatePowerPills(maze);
+
+          return maze;
+        }
+
+        generatePowerPills(maze) {
+          // 清空之前的大力丸
+          this.powerPills = [];
+
+          // 找到所有可用的空路径位置（不包括玩家起始位置和出口位置）
+          const availablePaths = [];
+          for (let y = 1; y < this.boardSize - 1; y++) {
+            for (let x = 1; x < this.boardSize - 1; x++) {
+              if (
+                maze[y][x].type === "path" &&
+                !(x === 1 && y === 1) && // 不在玩家起始位置
+                !(x === this.exit.x && y === this.exit.y)
+              ) {
+                // 不在出口位置
+                availablePaths.push({ x, y });
+              }
+            }
+          }
+
+          // 随机选择5个位置放置大力丸
+          const pillPositions = [];
+          while (pillPositions.length < 5 && availablePaths.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availablePaths.length);
+            const position = availablePaths.splice(randomIndex, 1)[0];
+            pillPositions.push(position);
+          }
+
+          this.powerPills = pillPositions;
+        }
+
+        initializeGame() {
+          const mazeElement = document.getElementById("maze");
+          mazeElement.innerHTML = "";
+
+          // 无敌模式背景特效
+          if (this.isInvincible) {
+            document.body.classList.add("invincible-background");
+          } else {
+            document.body.classList.remove("invincible-background");
+          }
+
+          for (let y = 0; y < this.boardSize; y++) {
+            for (let x = 0; x < this.boardSize; x++) {
+              const cell = document.createElement("div");
+              cell.className = "cell";
+              cell.id = `cell-${x}-${y}`;
+
+              const cellData = this.maze[y][x];
+
+              if (x === this.player.x && y === this.player.y) {
+                cell.className += " player";
+                cell.innerHTML = this.getPlayerSVG(this.player.direction);
+              } else if (this.keyPosition && x === this.keyPosition.x && y === this.keyPosition.y) {
+                // 掉落的钥匙
+                cell.className += " path key";
+                cell.innerHTML = this.getKeySVG();
+              } else if (x === this.exit.x && y === this.exit.y) {
+                cell.className += " exit";
+                if (this.hasKey) {
+                  cell.innerHTML = this.getExitSVG();
+                } else {
+                  cell.innerHTML = this.getLockedExitSVG();
+                }
+              } else if (cellData.type === "wall") {
+                cell.className += " wall";
+              } else if (cellData.type === "destructible") {
+                cell.className += " destructible";
+
+                // 钥匙提示效果 - 统一处理无敌模式和TIPS模式
+                if (cellData.hasKey && (this.isInvincible || this.tipsMode)) {
+                  if (this.tipsMode) {
+                    // TIPS模式：高亮+脉冲动画+小图标
+                    cell.className += " tips-key-highlight";
+                  } else if (this.isInvincible && !this.tipsMode) {
+                    // 仅无敌模式：高亮+小图标（无动画）
+                    cell.className += " key-box";
+                  }
+                }
+
+                // EASY模式下高亮路径上的箱子
+                if (this.easyMode && this.isOnBestPath(x, y)) {
+                  cell.className += " easy-box-highlight";
+                }
+                cell.innerHTML = this.getBoxSVG(cellData.health);
+              } else {
+                cell.className += " path";
+
+                // 检查是否有大力丸
+                const hasPowerPill = this.powerPills.some((pill) => pill.x === x && pill.y === y);
+                if (hasPowerPill) {
+                  cell.innerHTML = this.getPowerPillSVG();
+                }
+
+                // EASY模式下高亮最佳路径
+                if (this.easyMode && this.isOnBestPath(x, y)) {
+                  cell.className += " easy-path-highlight";
+                }
+              }
+
+              mazeElement.appendChild(cell);
+            }
+          }
+
+          this.updateStatus();
+        }
+
+        setupControls() {
+          // 基础移动控制
+          const moveKeys = {
+            ArrowUp: { dx: 0, dy: -1 },
+            ArrowDown: { dx: 0, dy: 1 },
+            ArrowLeft: { dx: -1, dy: 0 },
+            ArrowRight: { dx: 1, dy: 0 },
+          };
+
+          Object.keys(moveKeys).forEach((key) => {
+            new ComboKeys([key])
+              .onTrigger(() => {
+                if (this.gameStarted && !this.isPaused && !this.isEvacuating) {
+                  const { dx, dy } = moveKeys[key];
+                  this.movePlayer(dx, dy);
+                }
+              })
+              .start();
+          });
+
+          // 攻击控制（空格键）
+          new ComboKeys(["Space"])
+            .onTrigger(() => {
+              if (this.gameStarted && !this.isPaused && !this.isEvacuating) {
+                this.attack();
+              }
+            })
+            .start();
+
+          // 暂停控制（ESC键）
+          new ComboKeys(["Escape"])
+            .onTrigger(() => {
+              if (this.isEvacuating) {
+                this.completeEvacuation();
+              } else {
+                this.togglePause();
+              }
+            })
+            .start();
+
+          // 无敌模式秘籍：↑↑↓↓←→←→BA
+          new ComboKeys(["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"])
+            .timeout(2000)
+            .onTrigger(() => {
+              this.toggleInvincible();
+            })
+            .start();
+
+          // 测试用秘籍：直接到达终点（ALT+T）
+          new ComboKeys(["AltLeft", "KeyT"])
+            .onTrigger(() => {
+              console.log("测试秘籍：直接到达终点");
+              this.player.x = this.exit.x;
+              this.player.y = this.exit.y;
+              this.winGame();
+            })
+            .start();
+
+          // 字母和数字输入监听（用于撤离口号输入）
+          const alphanumericKeys = [
+            "KeyA",
+            "KeyB",
+            "KeyC",
+            "KeyD",
+            "KeyE",
+            "KeyF",
+            "KeyG",
+            "KeyH",
+            "KeyI",
+            "KeyJ",
+            "KeyK",
+            "KeyL",
+            "KeyM",
+            "KeyN",
+            "KeyO",
+            "KeyP",
+            "KeyQ",
+            "KeyR",
+            "KeyS",
+            "KeyT",
+            "KeyU",
+            "KeyV",
+            "KeyW",
+            "KeyX",
+            "KeyY",
+            "KeyZ",
+            "Digit0",
+            "Digit1",
+            "Digit2",
+            "Digit3",
+            "Digit4",
+            "Digit5",
+            "Digit6",
+            "Digit7",
+            "Digit8",
+            "Digit9",
+          ];
+
+          alphanumericKeys.forEach((key) => {
+            new ComboKeys([key])
+              .onTrigger((data) => {
+                if (this.isEvacuating) {
+                  // 检查是否有修饰键被按下，如果有则忽略
+                  const event = data.event;
+                  if (event.altKey || event.ctrlKey || event.shiftKey || event.metaKey) {
+                    console.log("忽略带修饰键的输入:", key);
+                    return;
+                  }
+
+                  let char = key.replace("Key", "").replace("Digit", "");
+                  this.handleEvacuationInput(char);
+                }
+              })
+              .start();
+          });
+
+          // TIPS模式 - 显示钥匙位置
+          new ComboKeys(["KeyT", "KeyI", "KeyP", "KeyS"])
+            .timeout(2000)
+            .onTrigger(() => {
+              this.toggleTipsMode();
+            })
+            .start();
+
+          // EASY模式 - 显示最佳路径
+          new ComboKeys(["KeyE", "KeyA", "KeyS", "KeyY"])
+            .timeout(2000)
+            .onTrigger(() => {
+              this.toggleEasyMode();
+            })
+            .start();
+
+          // AUTO模式 - 自动完成游戏（仅在无敌模式下可用）
+          new ComboKeys(["KeyA", "KeyU", "KeyT", "KeyO"])
+            .timeout(2000)
+            .onTrigger(() => {
+              this.toggleAutoMode();
+            })
+            .start();
+        }
+
+        movePlayer(dx, dy) {
+          // 更新玩家方向
+          if (dx > 0) this.player.direction = "right";
+          else if (dx < 0) this.player.direction = "left";
+          else if (dy > 0) this.player.direction = "down";
+          else if (dy < 0) this.player.direction = "up";
+
+          const newX = this.player.x + dx;
+          const newY = this.player.y + dy;
+
+          // 检查边界
+          if (newX < 0 || newX >= this.boardSize || newY < 0 || newY >= this.boardSize) {
+            this.initializeGame(); // 刷新显示方向变化
+            return;
+          }
+
+          const targetCell = this.maze[newY][newX];
+
+          // 检查是否可以移动
+          if (targetCell.type === "wall") {
+            this.initializeGame(); // 刷新显示方向变化
+            return;
+          }
+
+          if (targetCell.type === "destructible") {
+            if (this.isInvincible) {
+              // 无敌模式直接撞坏箱子
+              if (targetCell.hasKey) {
+                // 如果箱子里有钥匙，钥匙掉落到箱子位置
+                this.keyPosition = { x: newX, y: newY };
+                this.showNotification("🔑 钥匙掉落了！", 2000);
+              }
+              this.maze[newY][newX] = { type: "path" };
+              this.showNotification("💥 箱子被撞坏！", 1000);
+            } else {
+              // 普通模式不能穿过砖块
+              this.initializeGame(); // 刷新显示方向变化
+              return;
+            }
+          }
+
+          // 移动玩家
+          this.player.x = newX;
+          this.player.y = newY;
+
+          // 检查是否拾取钥匙
+          if (this.keyPosition && newX === this.keyPosition.x && newY === this.keyPosition.y) {
+            this.hasKey = true;
+            this.keyPosition = null;
+            this.showNotification("🔑 获得钥匙！现在可以开门了！", 2000);
+          }
+
+          // 检查是否拾取大力丸
+          const powerPillIndex = this.powerPills.findIndex((pill) => pill.x === newX && pill.y === newY);
+          if (powerPillIndex !== -1) {
+            this.powerPills.splice(powerPillIndex, 1); // 移除已拾取的大力丸
+            this.hasPowerPill = true;
+            this.powerPillCount = 10; // 可使用10次
+            this.showNotification("💊 获得大力丸！接下来10次攻击可一击必杀！", 3000);
+          }
+
+          // 检查是否到达终点
+          if (newX === this.exit.x && newY === this.exit.y) {
+            if (this.hasKey) {
+              this.winGame();
+              return;
+            } else {
+              this.showNotification("🚪 需要钥匙才能开门！", 2000);
+              // 玩家被弹回
+              this.player.x -= dx;
+              this.player.y -= dy;
+            }
+          }
+
+          this.initializeGame();
+        }
+
+        attack() {
+          // 只攻击玩家面向的方向
+          const directionOffsets = {
+            up: { dx: 0, dy: -1 },
+            down: { dx: 0, dy: 1 },
+            left: { dx: -1, dy: 0 },
+            right: { dx: 1, dy: 0 },
+          };
+
+          const { dx, dy } = directionOffsets[this.player.direction];
+          const targetX = this.player.x + dx;
+          const targetY = this.player.y + dy;
+
+          if (targetX >= 0 && targetX < this.boardSize && targetY >= 0 && targetY < this.boardSize) {
+            const targetCell = this.maze[targetY][targetX];
+
+            if (targetCell.type === "destructible") {
+              // 检查是否有大力丸效果
+              if (this.hasPowerPill && this.powerPillCount > 0) {
+                // 大力丸效果：一击必杀
+                targetCell.health = 0;
+                this.powerPillCount--;
+                this.showNotification(`💊 大力一击！(剩余${this.powerPillCount}次)`, 1000);
+
+                // 如果用完了大力丸效果
+                if (this.powerPillCount <= 0) {
+                  this.hasPowerPill = false;
+                  this.showNotification("💊 大力丸效果已消失", 2000);
+                }
+              } else {
+                // 普通攻击
+                targetCell.health--;
+              }
+
+              if (targetCell.health <= 0) {
+                // 检查箱子是否有钥匙
+                if (targetCell.hasKey) {
+                  this.keyPosition = { x: targetX, y: targetY };
+                  this.showNotification("🔑 钥匙掉落了！", 2000);
+                }
+                this.maze[targetY][targetX] = { type: "path" };
+                this.showNotification("💥 箱子已破坏！", 1000);
+              } else {
+                this.showNotification(`🔨 攻击箱子！(还需${targetCell.health}次)`, 600);
+              }
+
+              this.initializeGame();
+            } else if (targetCell.type === "wall") {
+              this.showNotification("🚫 无法破坏边界墙！", 1000);
+            }
+          }
+        }
+
+        togglePause() {
+          this.isPaused = !this.isPaused;
+          const overlay = document.getElementById("pauseOverlay");
+
+          if (this.isPaused) {
+            overlay.style.display = "flex";
+          } else {
+            overlay.style.display = "none";
+          }
+
+          this.updateStatus();
+        }
+
+        toggleInvincible() {
+          this.isInvincible = !this.isInvincible;
+          this.initializeGame();
+          // 无敌模式现在隐藏，不显示提示
+        }
+
+        showNotification(message, duration = 2000) {
+          const notification = document.createElement("div");
+          notification.className = "notification";
+          notification.textContent = message;
+          document.body.appendChild(notification);
+
+          setTimeout(() => {
+            if (notification.parentElement) {
+              document.body.removeChild(notification);
+            }
+          }, duration);
+        }
+
+        toggleTipsMode() {
+          this.tipsMode = !this.tipsMode;
+          this.initializeGame();
+          if (this.tipsMode) {
+            this.showNotification("🔍 TIPS模式：钥匙位置已标记", 2000);
+          } else {
+            this.showNotification("TIPS模式已关闭", 1000);
+          }
+        }
+
+        toggleEasyMode() {
+          this.easyMode = !this.easyMode;
+          if (this.easyMode) {
+            this.calculateBestPath();
+            this.showNotification("🛤️ EASY模式：最佳路径已显示", 2000);
+          } else {
+            this.bestPath = [];
+            this.showNotification("EASY模式已关闭", 1000);
+          }
+          this.initializeGame();
+        }
+
+        toggleAutoMode() {
+          if (!this.isInvincible) {
+            this.showNotification("⚠️ AUTO模式仅在无敌模式下可用！", 2000);
+            return;
+          }
+
+          this.isAutoMode = !this.isAutoMode;
+
+          if (this.isAutoMode) {
+            this.startAutoMode();
+          } else {
+            this.stopAutoMode();
+          }
+        }
+
+        startAutoMode() {
+          this.showNotification("🤖 AUTO模式启动：自动完成游戏", 2000);
+
+          // 计算完整路径：玩家 -> 钥匙 -> 出口
+          this.calculateAutoPath();
+
+          if (this.autoPath.length === 0) {
+            this.showNotification("❌ 无法计算自动路径", 2000);
+            this.isAutoMode = false;
+            return;
+          }
+
+          this.autoCurrentStep = 0;
+
+          // 开始自动移动，每500毫秒移动一步
+          this.autoInterval = setInterval(() => {
+            this.executeAutoStep();
+          }, 100);
+        }
+
+        stopAutoMode() {
+          if (this.autoInterval) {
+            clearInterval(this.autoInterval);
+            this.autoInterval = null;
+          }
+          this.autoPath = [];
+          this.autoCurrentStep = 0;
+          this.showNotification("AUTO模式已停止", 1000);
+        }
+
+        calculateAutoPath() {
+          this.autoPath = [];
+
+          if (!this.keyBoxPosition) {
+            console.log("找不到钥匙位置");
+            return;
+          }
+
+          // 第一段：从玩家到钥匙箱子
+          const pathToKey = this.findPath(this.player, this.keyBoxPosition);
+          if (pathToKey && pathToKey.length > 1) {
+            // 移除起始点，只保留移动路径
+            this.autoPath = this.autoPath.concat(pathToKey.slice(1));
+          }
+
+          // 第二段：从钥匙位置到出口
+          const pathToExit = this.findPath(this.keyBoxPosition, this.exit);
+          if (pathToExit && pathToExit.length > 1) {
+            // 移除起始点（钥匙位置），只保留移动路径
+            this.autoPath = this.autoPath.concat(pathToExit.slice(1));
+          }
+
+          console.log("自动路径计算完成，总步数:", this.autoPath.length);
+        }
+
+        executeAutoStep() {
+          if (!this.isAutoMode || !this.gameActive || this.isPaused) {
+            this.stopAutoMode();
+            return;
+          }
+
+          if (this.autoCurrentStep >= this.autoPath.length) {
+            // 路径完成
+            this.stopAutoMode();
+            this.showNotification("🎉 AUTO模式完成！", 2000);
+            return;
+          }
+
+          const targetPos = this.autoPath[this.autoCurrentStep];
+          const dx = targetPos.x - this.player.x;
+          const dy = targetPos.y - this.player.y;
+
+          // 只能移动一格
+          if (Math.abs(dx) + Math.abs(dy) === 1) {
+            this.movePlayer(dx, dy);
+            this.autoCurrentStep++;
+          } else {
+            // 路径不连续，重新计算
+            console.log("路径不连续，重新计算");
+            this.calculateAutoPath();
+            this.autoCurrentStep = 0;
+          }
+        }
+
+        calculateBestPath() {
+          // 使用A*算法计算从玩家位置到钥匙，再到出口的最佳路径
+          this.bestPath = [];
+
+          if (!this.keyBoxPosition) return;
+
+          // 第一段：从玩家到钥匙箱子
+          const pathToKey = this.findPath(this.player, this.keyBoxPosition);
+          if (pathToKey) {
+            this.bestPath = this.bestPath.concat(pathToKey);
+          }
+
+          // 第二段：从钥匙位置到出口
+          const pathToExit = this.findPath(this.keyBoxPosition, this.exit);
+          if (pathToExit) {
+            this.bestPath = this.bestPath.concat(pathToExit.slice(1)); // 移除重复的钥匙位置
+          }
+        }
+
+        findPath(start, end) {
+          // 简化的A*算法
+          const openSet = [{ ...start, g: 0, h: this.heuristic(start, end), f: this.heuristic(start, end), parent: null }];
+          const closedSet = new Set();
+
+          while (openSet.length > 0) {
+            // 找到f值最小的节点
+            openSet.sort((a, b) => a.f - b.f);
+            const current = openSet.shift();
+
+            if (current.x === end.x && current.y === end.y) {
+              // 找到目标，重建路径
+              const path = [];
+              let node = current;
+              while (node) {
+                path.unshift({ x: node.x, y: node.y });
+                node = node.parent;
+              }
+              return path;
+            }
+
+            closedSet.add(`${current.x},${current.y}`);
+
+            // 检查四个方向的邻居
+            const neighbors = [
+              { x: current.x + 1, y: current.y },
+              { x: current.x - 1, y: current.y },
+              { x: current.x, y: current.y + 1 },
+              { x: current.x, y: current.y - 1 },
+            ];
+
+            for (const neighbor of neighbors) {
+              if (neighbor.x < 0 || neighbor.x >= this.boardSize || neighbor.y < 0 || neighbor.y >= this.boardSize) continue;
+
+              if (closedSet.has(`${neighbor.x},${neighbor.y}`)) continue;
+
+              const cell = this.maze[neighbor.y][neighbor.x];
+              if (cell.type === "wall") continue;
+
+              const g = current.g + 1;
+              const h = this.heuristic(neighbor, end);
+              const f = g + h;
+
+              const existingOpen = openSet.find((n) => n.x === neighbor.x && n.y === neighbor.y);
+              if (!existingOpen || g < existingOpen.g) {
+                if (existingOpen) {
+                  existingOpen.g = g;
+                  existingOpen.f = f;
+                  existingOpen.parent = current;
+                } else {
+                  openSet.push({ ...neighbor, g, h, f, parent: current });
+                }
+              }
+            }
+          }
+
+          return null; // 找不到路径
+        }
+
+        heuristic(a, b) {
+          // 曼哈顿距离
+          return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+        }
+
+        isOnBestPath(x, y) {
+          return this.bestPath.some((point) => point.x === x && point.y === y);
+        }
+
+        startGame() {
+          if (this.gameStarted) return; // 防止重复开始
+
+          this.gameStarted = true;
+          this.gameActive = true;
+
+          // 隐藏开始覆盖层
+          document.getElementById("startOverlay").style.display = "none";
+
+          // 启动计时器
+          this.startTimer();
+
+          // 显示开始提示
+          this.showNotification("🎮 游戏开始！寻找钥匙并逃脱迷宫！", 3000);
+        }
+
+        startTimer() {
+          this.timerInterval = setInterval(() => {
+            if (this.gameActive && !this.isPaused) {
+              this.timeLeft--;
+              this.updateTimer();
+
+              if (this.timeLeft <= 0) {
+                this.loseGame();
+              }
+            }
+          }, 1000);
+        }
+
+        updateTimer() {
+          const timerElement = document.getElementById("timer");
+          timerElement.textContent = `${this.timeLeft}秒`;
+
+          if (this.timeLeft <= 10) {
+            timerElement.classList.add("warning");
+          } else {
+            timerElement.classList.remove("warning");
+          }
+        }
+
+        // SVG图标生成方法
+        getPlayerSVG(direction) {
+          // 创建😊笑脸，嘴部朝向表示移动方向
+          let mouthPath = "";
+          switch (direction) {
+            case "up":
+              mouthPath = "M 6 12 Q 10 9 14 12"; // 嘴巴朝上
+              break;
+            case "down":
+              mouthPath = "M 6 11 Q 10 15 14 11"; // 嘴巴朝下
+              break;
+            case "left":
+              mouthPath = "M 8 11 Q 6 13 8 15"; // 嘴巴朝左
+              break;
+            case "right":
+            default:
+              mouthPath = "M 12 11 Q 14 13 12 15"; // 嘴巴朝右
+              break;
+          }
+
+          return `<svg viewBox="0 0 20 20">
+                    <circle cx="10" cy="10" r="8" fill="#FFD700" stroke="#FFA000" stroke-width="1"/>
+                    <circle cx="7" cy="8" r="1.5" fill="#333"/>
+                    <circle cx="13" cy="8" r="1.5" fill="#333"/>
+                    <path d="${mouthPath}" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </svg>`;
+        }
+
+        getExitSVG() {
+          // 创建🚪门样式的出口（棕色主题）
+          return `<svg viewBox="0 0 20 20">
+                    <!-- 门框 -->
+                    <rect x="3" y="2" width="14" height="16" fill="#654321" stroke="#5D3A1A" stroke-width="1" rx="1"/>
+                    <!-- 门板 -->
+                    <rect x="4" y="3" width="12" height="14" fill="#8B4513" stroke="#654321" stroke-width="1" rx="0.5"/>
+                    <!-- 门把手 -->
+                    <circle cx="14" cy="10" r="1" fill="#CD853F" stroke="#A0522D" stroke-width="0.5"/>
+                    <!-- 门板装饰线条 -->
+                    <rect x="5" y="4" width="10" height="5" fill="none" stroke="#654321" stroke-width="0.5" rx="0.3"/>
+                    <rect x="5" y="11" width="10" height="5" fill="none" stroke="#654321" stroke-width="0.5" rx="0.3"/>
+                    <!-- 门缝 -->
+                    <line x1="10" y1="3" x2="10" y2="17" stroke="#5D3A1A" stroke-width="0.3"/>
+                </svg>`;
+        }
+
+        getBoxSVG(health) {
+          if (health <= 0) {
+            // 已破坏，返回空
+            return "";
+          } else if (health === 1) {
+            // 严重破损
+            return `<svg viewBox="0 0 20 20">
+                        <rect x="2" y="2" width="16" height="16" fill="#8B4513" stroke="#654321" stroke-width="1" opacity="0.6"/>
+                        <path d="M 4 4 L 16 16 M 16 4 L 4 16" stroke="#654321" stroke-width="1.5" opacity="0.8"/>
+                        <rect x="3" y="3" width="14" height="14" fill="none" stroke="#A0522D" stroke-width="0.5" stroke-dasharray="2,2"/>
+                    </svg>`;
+          } else if (health === 2) {
+            // 中度破损
+            return `<svg viewBox="0 0 20 20">
+                        <rect x="2" y="2" width="16" height="16" fill="#8B4513" stroke="#654321" stroke-width="1" opacity="0.8"/>
+                        <path d="M 6 6 L 14 14 M 14 6 L 6 14" stroke="#654321" stroke-width="1.5" opacity="0.6"/>
+                        <rect x="3" y="3" width="14" height="14" fill="none" stroke="#A0522D" stroke-width="0.5"/>
+                    </svg>`;
+          } else {
+            // 完整箱子
+            return `<svg viewBox="0 0 20 20">
+                        <rect x="2" y="2" width="16" height="16" fill="#8B4513" stroke="#654321" stroke-width="1"/>
+                        <path d="M 6 6 L 14 14 M 14 6 L 6 14" stroke="#654321" stroke-width="2"/>
+                        <rect x="3" y="3" width="14" height="14" fill="none" stroke="#A0522D" stroke-width="0.5"/>
+                        <circle cx="5" cy="5" r="0.5" fill="#A0522D"/>
+                        <circle cx="15" cy="5" r="0.5" fill="#A0522D"/>
+                        <circle cx="5" cy="15" r="0.5" fill="#A0522D"/>
+                        <circle cx="15" cy="15" r="0.5" fill="#A0522D"/>
+                    </svg>`;
+          }
+        }
+
+        getKeySVG() {
+          return `<svg viewBox="0 0 20 20">
+                    <circle cx="6" cy="8" r="3" fill="none" stroke="#FFD700" stroke-width="2"/>
+                    <rect x="9" y="7" width="8" height="2" fill="#FFD700"/>
+                    <rect x="13" y="6" width="2" height="1" fill="#FFD700"/>
+                    <rect x="15" y="9" width="2" height="1" fill="#FFD700"/>
+                    <circle cx="6" cy="8" r="1" fill="#FFD700"/>
+                </svg>`;
+        }
+
+        getPowerPillSVG() {
+          // 创建💊大力丸样式（黄色左下，红色右上，倾斜放置，放大版）
+          return `<svg viewBox="0 0 20 20">
+                    <g transform="rotate(-45 10 10)">
+                        <!-- 胶囊左半部分（黄色，旋转后对应左下） -->
+                        <rect x="4" y="7" width="6" height="6" fill="#FFD700" rx="3" ry="3"/>
+                        <!-- 胶囊右半部分（红色，旋转后对应右上） -->
+                        <rect x="10" y="7" width="6" height="6" fill="#FF4444" rx="3" ry="3"/>
+                        <!-- 胶囊分割线 -->
+                        <line x1="10" y1="7" x2="10" y2="13" stroke="#CC9900" stroke-width="1"/>
+                        <!-- 黄色部分光泽效果 -->
+                        <ellipse cx="7" cy="8.5" rx="1.5" ry="0.8" fill="#FFFF88" opacity="0.7"/>
+                        <ellipse cx="6" cy="9" rx="0.8" ry="0.4" fill="#FFFFFF" opacity="0.5"/>
+                        <!-- 红色部分光泽效果 -->
+                        <ellipse cx="13" cy="8.5" rx="1.5" ry="0.8" fill="#FF8888" opacity="0.7"/>
+                        <ellipse cx="14" cy="9" rx="0.8" ry="0.4" fill="#FFCCCC" opacity="0.4"/>
+                    </g>
+                </svg>`;
+        }
+
+        getLockedExitSVG() {
+          // 创建锁定状态的🚪门（灰色+锁）
+          return `<svg viewBox="0 0 20 20">
+                    <!-- 门框（灰色） -->
+                    <rect x="3" y="2" width="14" height="16" fill="#666" stroke="#444" stroke-width="1" rx="1"/>
+                    <!-- 门板（灰色） -->
+                    <rect x="4" y="3" width="12" height="14" fill="#888" stroke="#666" stroke-width="1" rx="0.5"/>
+                    <!-- 门板装饰线条 -->
+                    <rect x="5" y="4" width="10" height="5" fill="none" stroke="#666" stroke-width="0.5" rx="0.3"/>
+                    <rect x="5" y="11" width="10" height="5" fill="none" stroke="#666" stroke-width="0.5" rx="0.3"/>
+                    <!-- 门缝 -->
+                    <line x1="10" y1="3" x2="10" y2="17" stroke="#444" stroke-width="0.3"/>
+                    <!-- 锁图标 -->
+                    <circle cx="10" cy="10" r="2" fill="none" stroke="#333" stroke-width="1.2"/>
+                    <rect x="9" y="10" width="2" height="3" fill="#333" rx="0.3"/>
+                    <circle cx="10" cy="10.5" r="0.3" fill="#AAA"/>
+                </svg>`;
+        }
+
+        updateStatus() {
+          document.getElementById("position").textContent = `${this.player.x}, ${this.player.y}`;
+          document.getElementById("keyStatus").textContent = this.hasKey ? "已获得 🔑" : "未获得";
+
+          // 更新玩家状态显示
+          let playerStatus = "普通";
+          if (this.isInvincible) {
+            playerStatus = "无敌";
+          } else if (this.hasPowerPill && this.powerPillCount > 0) {
+            playerStatus = `大力(${this.powerPillCount})`;
+          }
+          document.getElementById("playerStatus").textContent = playerStatus;
+
+          let status = "等待开始";
+          if (!this.gameStarted) {
+            status = "等待开始";
+          } else if (!this.gameActive) {
+            status = "游戏结束";
+          } else if (this.isPaused) {
+            status = "已暂停";
+          } else {
+            status = "进行中";
+          }
+          document.getElementById("gameStatus").textContent = status;
+
+          // 更新任务状态
+          this.updateTaskStatus();
+        }
+
+        updateTaskStatus() {
+          // 任务1：寻找隐藏钥匙
+          const findKeyTask = document.getElementById("task-find-key");
+          if (this.hasKey) {
+            this.markTaskCompleted("task-find-key");
+          }
+
+          // 任务2：前往撤离点（到达出口位置）
+          if (this.player.x === this.exit.x && this.player.y === this.exit.y && this.hasKey) {
+            this.markTaskCompleted("task-reach-exit");
+          }
+        }
+
+        markTaskCompleted(taskId) {
+          const task = document.getElementById(taskId);
+          if (task) {
+            task.classList.add("completed");
+            const checkbox = task.querySelector(".task-checkbox");
+            if (checkbox) {
+              checkbox.textContent = "✓";
+              checkbox.classList.add("completed");
+            }
+          }
+        }
+
+        generateEvacuationCode() {
+          const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+          let code = "";
+          for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          return code;
+        }
+
+        handleEvacuationInput(char) {
+          console.log("处理撤离输入:", char, "是否撤离中:", this.isEvacuating, "当前索引:", this.currentInputIndex);
+
+          if (!this.isEvacuating || this.currentInputIndex >= 6) {
+            console.log("输入被忽略，撤离状态或索引问题");
+            return;
+          }
+
+          // 只接受字母和数字
+          if (!/^[A-Z0-9]$/.test(char.toUpperCase())) {
+            console.log("字符不符合要求:", char);
+            return;
+          }
+
+          const inputChar = char.toUpperCase();
+          const expectedChar = this.evacuationCode[this.currentInputIndex];
+
+          console.log("输入字符:", inputChar, "期望字符:", expectedChar, "当前索引:", this.currentInputIndex);
+
+          // 立即检查输入是否正确
+          if (inputChar === expectedChar) {
+            // 输入正确，继续
+            this.userInput[this.currentInputIndex] = inputChar;
+            this.currentInputIndex++;
+            this.updateInputBoxes();
+
+            // 检查是否全部输入完成
+            if (this.currentInputIndex >= 6) {
+              this.checkEvacuationCode();
+            }
+          } else {
+            // 输入错误，立即重置并显示错误
+            this.showInputError();
+          }
+        }
+
+        initializeInputBoxes() {
+          const boxes = document.querySelectorAll(".code-input-box");
+          console.log("初始化输入框，找到boxes数量:", boxes.length);
+
+          boxes.forEach((box, index) => {
+            box.innerHTML = "";
+            box.classList.remove("active", "correct", "incorrect");
+
+            // 创建占位符显示预期字符
+            const placeholder = document.createElement("span");
+            placeholder.className = "placeholder";
+            placeholder.textContent = this.evacuationCode[index];
+            box.appendChild(placeholder);
+
+            // 如果是第一个框，设为活跃状态
+            if (index === 0) {
+              box.classList.add("active");
+            }
+          });
+        }
+
+        updateInputBoxes() {
+          const boxes = document.querySelectorAll(".code-input-box");
+          console.log("更新输入框，当前索引:", this.currentInputIndex, "用户输入:", this.userInput);
+
+          boxes.forEach((box, index) => {
+            box.classList.remove("active", "correct", "incorrect");
+
+            const placeholder = box.querySelector(".placeholder");
+            let userInputSpan = box.querySelector(".user-input");
+
+            if (index < this.currentInputIndex) {
+              // 已输入的框
+              if (this.userInput[index] === this.evacuationCode[index]) {
+                // 输入正确，显示绿色
+                box.classList.add("correct");
+                if (!userInputSpan) {
+                  userInputSpan = document.createElement("span");
+                  userInputSpan.className = "user-input";
+                  box.appendChild(userInputSpan);
+                }
+                userInputSpan.textContent = this.userInput[index];
+                if (placeholder) placeholder.style.display = "none";
+              }
+            } else if (index === this.currentInputIndex) {
+              // 当前活跃的框
+              box.classList.add("active");
+              if (userInputSpan) {
+                userInputSpan.remove();
+              }
+              if (placeholder) placeholder.style.display = "block";
+            } else {
+              // 未输入的框
+              if (userInputSpan) {
+                userInputSpan.remove();
+              }
+              if (placeholder) placeholder.style.display = "block";
+            }
+          });
+        }
+
+        showInputError() {
+          const boxes = document.querySelectorAll(".code-input-box");
+
+          // 显示错误状态 - 变红并晃动
+          boxes.forEach((box) => {
+            box.classList.remove("correct", "active");
+            box.classList.add("incorrect");
+
+            // 显示占位符，隐藏用户输入
+            const placeholder = box.querySelector(".placeholder");
+            const userInputSpan = box.querySelector(".user-input");
+            if (placeholder) {
+              placeholder.style.display = "block";
+            }
+            if (userInputSpan) {
+              userInputSpan.remove();
+            }
+          });
+
+          // 不显示文字提示，只通过颜色和晃动反馈
+
+          // 0.5秒后重置输入（等待晃动动画完成）
+          setTimeout(() => {
+            this.currentInputIndex = 0;
+            this.userInput = [];
+            this.initializeInputBoxes();
+            document.getElementById("evacuationSuccess").style.display = "none";
+          }, 500);
+        }
+
+        checkEvacuationCode() {
+          const userCode = this.userInput.join("");
+          const boxes = document.querySelectorAll(".code-input-box");
+
+          // 由于我们现在实时验证，到这里时肯定是全部正确的
+          // 确保所有框都显示为正确状态
+          boxes.forEach((box, index) => {
+            box.classList.remove("active", "incorrect");
+            box.classList.add("correct");
+
+            // 确保显示正确的字符
+            const userInputSpan = box.querySelector(".user-input");
+            const placeholder = box.querySelector(".placeholder");
+            if (userInputSpan) {
+              userInputSpan.textContent = this.userInput[index];
+            }
+            if (placeholder) {
+              placeholder.style.display = "none";
+            }
+          });
+
+          document.getElementById("evacuationSuccess").style.display = "block";
+          this.showNotification("✅ 撤离口令验证成功！按ESC立即撤离", 3000);
+
+          // 自动完成撤离，不需要再按ESC
+          setTimeout(() => {
+            this.completeEvacuation();
+          }, 1000);
+        }
+
+        completeEvacuation() {
+          if (!this.isEvacuating) return;
+
+          const userCode = this.userInput.join("");
+          if (userCode === this.evacuationCode) {
+            // 标记第三个任务完成
+            this.markTaskCompleted("task-input-code");
+            document.getElementById("winModal").style.display = "none";
+            this.showEvacuationComplete();
+          }
+        }
+
+        showEvacuationComplete() {
+          // 设置黑色背景
+          document.body.style.background = "#000";
+
+          // 创建烟花动画容器
+          const fireworksContainer = document.createElement("div");
+          fireworksContainer.id = "fireworks-container";
+          fireworksContainer.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 1000;
+                `;
+          document.body.appendChild(fireworksContainer);
+
+          // 启动烟花动画
+          this.startFireworks(fireworksContainer);
+
+          // 创建撤离完成界面
+          const completionModal = document.createElement("div");
+          completionModal.className = "modal";
+          completionModal.style.display = "flex";
+          completionModal.style.zIndex = "1001";
+          completionModal.innerHTML = `
+                    <div class="modal-content">
+                        <h2>🚁 撤离成功！</h2>
+                        <p>恭喜您成功完成任务并安全撤离！</p>
+                        <div style="font-size: 48px; margin: 20px 0;">🎉</div>
+                        <p>您已成功：</p>
+                        <ul style="text-align: left; margin: 20px 0;">
+                            <li>✅ 穿越33×33复杂迷宫</li>
+                            <li>✅ 在${180 - this.timeLeft}秒内到达撤离点</li>
+                            <li>✅ 正确输入撤离口号</li>
+                            <li>✅ 完成安全撤离</li>
+                        </ul>
+                        <button class="btn" onclick="restartGame(); document.body.removeChild(this.parentElement.parentElement);">再次挑战</button>
+                    </div>
+                `;
+          document.body.appendChild(completionModal);
+        }
+
+        startFireworks(container) {
+          // 创建多个烟花
+          for (let i = 0; i < 6; i++) {
+            setTimeout(() => {
+              this.createFirework(container);
+            }, i * 800);
+          }
+
+          // 创建彩带
+          for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+              this.createConfetti(container);
+            }, i * 200);
+          }
+        }
+
+        createFirework(container) {
+          const firework = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          firework.style.cssText = `
+                    position: absolute;
+                    width: 200px;
+                    height: 200px;
+                    left: ${Math.random() * (window.innerWidth - 200)}px;
+                    top: ${Math.random() * (window.innerHeight - 200)}px;
+                `;
+
+          const colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#feca57", "#ff9ff3"];
+          const color = colors[Math.floor(Math.random() * colors.length)];
+
+          // 创建烟花爆炸效果
+          for (let i = 0; i < 12; i++) {
+            const particle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            const angle = (i * 30 * Math.PI) / 180;
+            const distance = 80;
+
+            particle.setAttribute("cx", "100");
+            particle.setAttribute("cy", "100");
+            particle.setAttribute("r", "3");
+            particle.setAttribute("fill", color);
+
+            // 添加动画
+            const animateX = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+            animateX.setAttribute("attributeName", "cx");
+            animateX.setAttribute("values", `100;${100 + Math.cos(angle) * distance}`);
+            animateX.setAttribute("dur", "1.5s");
+            animateX.setAttribute("fill", "freeze");
+
+            const animateY = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+            animateY.setAttribute("attributeName", "cy");
+            animateY.setAttribute("values", `100;${100 + Math.sin(angle) * distance}`);
+            animateY.setAttribute("dur", "1.5s");
+            animateY.setAttribute("fill", "freeze");
+
+            const animateOpacity = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+            animateOpacity.setAttribute("attributeName", "opacity");
+            animateOpacity.setAttribute("values", "1;0");
+            animateOpacity.setAttribute("dur", "1.5s");
+            animateOpacity.setAttribute("fill", "freeze");
+
+            particle.appendChild(animateX);
+            particle.appendChild(animateY);
+            particle.appendChild(animateOpacity);
+            firework.appendChild(particle);
+          }
+
+          container.appendChild(firework);
+
+          // 2秒后移除烟花
+          setTimeout(() => {
+            if (container.contains(firework)) {
+              container.removeChild(firework);
+            }
+          }, 2000);
+        }
+
+        createConfetti(container) {
+          const confetti = document.createElement("div");
+          const colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#feca57", "#ff9ff3"];
+          const color = colors[Math.floor(Math.random() * colors.length)];
+
+          confetti.style.cssText = `
+                    position: absolute;
+                    width: 8px;
+                    height: 8px;
+                    background: ${color};
+                    left: ${Math.random() * window.innerWidth}px;
+                    top: -10px;
+                    transform: rotate(${Math.random() * 360}deg);
+                    animation: confetti-fall 3s linear forwards;
+                `;
+
+          container.appendChild(confetti);
+
+          // 3秒后移除彩带
+          setTimeout(() => {
+            if (container.contains(confetti)) {
+              container.removeChild(confetti);
+            }
+          }, 3000);
+        }
+
+        winGame() {
+          this.gameActive = false;
+          this.isEvacuating = true;
+          clearInterval(this.timerInterval);
+
+          // 停止自动模式
+          if (this.isAutoMode) {
+            this.stopAutoMode();
+          }
+
+          this.evacuationCode = this.generateEvacuationCode();
+          document.getElementById("evacuationCode").textContent = this.evacuationCode;
+          document.getElementById("winModal").style.display = "flex";
+
+          // 重置输入状态并确保在DOM渲染后更新
+          this.currentInputIndex = 0;
+          this.userInput = [];
+
+          // 确保模态框完全显示后再更新输入框
+          setTimeout(() => {
+            this.initializeInputBoxes();
+            // 隐藏撤离成功提示
+            document.getElementById("evacuationSuccess").style.display = "none";
+
+            console.log("撤离模态框已初始化，当前状态:", {
+              isEvacuating: this.isEvacuating,
+              evacuationCode: this.evacuationCode,
+              currentInputIndex: this.currentInputIndex,
+            });
+          }, 100);
+
+          this.updateStatus();
+        }
+
+        loseGame() {
+          this.gameActive = false;
+          clearInterval(this.timerInterval);
+
+          // 停止自动模式
+          if (this.isAutoMode) {
+            this.stopAutoMode();
+          }
+
+          document.getElementById("loseModal").style.display = "flex";
+
+          this.updateStatus();
+        }
+      }
+
+      // 全局函数
+      function restartGame() {
+        document.getElementById("winModal").style.display = "none";
+        document.getElementById("loseModal").style.display = "none";
+
+        // 清理烟花容器
+        const fireworksContainer = document.getElementById("fireworks-container");
+        if (fireworksContainer) {
+          document.body.removeChild(fireworksContainer);
+        }
+
+        // 恢复背景
+        document.body.style.background = "linear-gradient(135deg, #1e3c72, #2a5298)";
+
+        // 清理撤离成功界面
+        const completionModals = document.querySelectorAll(".modal");
+        completionModals.forEach((modal) => {
+          if (modal.id !== "winModal" && modal.id !== "loseModal") {
+            if (modal.parentElement) {
+              modal.parentElement.removeChild(modal);
+            }
+          }
+        });
+
+        // 显示开始覆盖层
+        document.getElementById("startOverlay").style.display = "flex";
+
+        // 重新开始游戏
+        window.game = new MazeGame();
+      }
+
+      // 启动游戏
+      window.addEventListener("DOMContentLoaded", () => {
+        window.game = new MazeGame();
+      });
+    </script>
+  </body>
+</html>
