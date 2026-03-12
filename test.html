@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Test ComboKeys</title>
+</head>
+<body>
+  <h1>测试 ComboKeys - Ctrl+Alt+Shift+A</h1>
+  <div id="log" style="font-family: monospace; padding: 20px; background: #222; color: #0f0; min-height: 200px;"></div>
+  <script type="module">
+    import { ComboKeys } from './dist/index.js';
+    
+    const logEl = document.getElementById('log');
+    function log(msg) {
+      logEl.innerHTML += msg + '<br>';
+      console.log(msg);
+    }
+    
+    const combo = new ComboKeys('Ctrl+Alt+Shift+A')
+      .debug(true)
+      .onTrigger((info) => {
+        log('🎯 TRIGGERED! Keys: ' + info.keys.join(' + '));
+        log('📋 Sequence: ' + info.sequence);
+      })
+      .start();
+    
+    log('Ready - Press Ctrl+Alt+Shift+A');
+  </script>
+</body>
+</html>

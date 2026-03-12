@@ -1,13 +1,14 @@
-# ComboKeys 2.0
+# ComboKeys 2.1
 
-一个现代化、类型安全的 JavaScript 类，用于监听和处理键盘组合键事件。支持复杂的键盘操作序列检测，如快捷键、秘籍码等。
+一个现代化、类型安全的 JavaScript 类，用于监听和处理键盘组合键和序列键事件。支持**同时按键触发**和**顺序按键触发**两种模式。
 
-可用于游戏开发、Web 应用快捷键、隐藏功能激活等场景，灵感来自 `thisisunsafe` 浏览器绕过告警提示的隐藏指令。
+可用于 Web 应用快捷键、游戏操作、隐藏功能激活等场景。
 
 ## ✨ 功能特性
 
-- 🎯 **直观易用**：清晰的 API 设计，方法名语义明确
-- ⏱️ **超时控制**：可设置按键间的最大时间间隔，超时自动重置
+- 🎯 **双模式支持**：同时支持组合键（Ctrl+C）和序列键（↑↑↓↓←→BA）
+- 🔗 **组合键触发**：修饰键+普通键同时按下时立即触发
+- 🔢 **序列键触发**：按键按顺序输入后触发
 - 👂 **精确监听**：支持指定 DOM 元素监听范围，避免全局污染
 - 🔄 **链式调用**：流畅的 API 设计，支持方法链式调用
 - 🐛 **调试友好**：内置调试功能，详细的日志输出
@@ -17,73 +18,72 @@
 - 🛡️ **错误处理**：完善的参数验证和错误提示
 - 🧹 **资源管理**：支持优雅的资源清理和销毁
 
-## 🎮 游戏示例
+## 🎮 示例
 
-[示例-迷宫逃脱](https://evil7.github.io/ComboKeys/demo.html)
-
-游戏中使用了 `ComboKeys` 来监听玩家的 `↑ ↓ ← →` 移动和 `Space` 攻击按键
-
-留下了一些隐藏指令，如 `TIPS` 显示钥匙位置，或再输入 `EASY` 标记最佳路径
-
-哦对了！我依旧保留了那个经典彩蛋，试试 `↑↑↓↓←→←→BA` 并输入 `AUTO` 吧！
+[在线演示](https://evil7.github.io/ComboKeys/demo.html)
 
 ## 🚀 快速开始
 
-### 基本用法
+### 组合键模式（同时按下）
 
 ```javascript
-// 创建一个监听 Ctrl+C 的组合键
-const combo = new ComboKeys(["ControlLeft", "KeyC"])
+// 监听 Ctrl+C 组合键（同时按下触发）
+const combo = new ComboKeys("Ctrl+C")
   .onTrigger(() => {
     console.log("复制快捷键被触发！");
   })
   .start();
+
+// 多键组合 - Ctrl+Alt+Shift+A
+const combo4 = new ComboKeys("Ctrl+Alt+Shift+A").onTrigger(() => console.log("四键组合触发！")).start();
 ```
 
-### 高级用法
+### 序列模式（按顺序输入）
 
 ```javascript
-// 监听复杂的按键序列（科乐美秘籍）
-const konamiCode = new ComboKeys(["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"])
-  .timeout(800) // 800ms 内完成
+// 监听按键序列（按顺序输入后触发）
+const konamiCode = new ComboKeys("↑↑↓↓←→←→BA")
+  .timeout(1500) // 1500ms 内完成输入
   .onTrigger((info) => {
     console.log(`科乐美秘籍激活！第 ${info.triggerCount} 次`);
-  }, false) // 不阻止方向键默认行为
+  }, false) // 不阻止默认行为
   .maxTriggers(3) // 最多触发3次
-  .debug(true) // 开启调试模式
+  .debug(true) // 开启调试
   .start();
 ```
 
-### 配置对象初始化
+### 初始化方式
 
 ```javascript
-const advancedCombo = new ComboKeys({
-  keys: ["AltLeft", "ShiftLeft", "KeyF"],
-  timeout: 1500,
+// 方式一：直接传入字符串（推荐）
+new ComboKeys("Ctrl+S").onTrigger(() => console.log("保存")).start();
+
+// 方式二：数组形式
+new ComboKeys(["Ctrl", "S"]).onTrigger(() => console.log("保存")).start();
+
+// 方式三：配置对象
+new ComboKeys({
+  keys: "Ctrl+Shift+P",
+  timeout: 1000,
   target: document.body,
   preventDefault: true,
-  maxTriggers: 5,
-  debug: true,
-})
-  .onTrigger((info) => {
-    console.log("高级组合键触发", info);
-  })
-  .start();
+  maxTriggers: Infinity,
+  debug: false,
+  callback: () => console.log("触发"),
+}).start();
 ```
 
 ### 默认行为控制
 
 ```javascript
 // 阻止默认行为（默认）
-const combo1 = new ComboKeys(["ControlLeft", "KeyS"]).onTrigger(() => console.log("保存")).start();
+const combo1 = new ComboKeys("Ctrl+S").onTrigger(() => console.log("保存")).start();
 
 // 允许默认行为
-const combo2 = new ComboKeys(["ControlLeft", "KeyC"])
-  .onTrigger(() => console.log("复制"), false) // 第二个参数为false
-  .start();
+const combo2 = new ComboKeys("Ctrl+C").onTrigger(() => console.log("复制"), false).start();
 
 // 输入框中的组合键，通常不阻止默认行为
-const inputCombo = new ComboKeys(["ControlLeft", "Enter"])
+const inputCombo = new ComboKeys("Ctrl+Enter")
   .target(document.getElementById("input"))
   .onTrigger(() => console.log("提交"), false)
   .start();
@@ -94,37 +94,52 @@ const inputCombo = new ComboKeys(["ControlLeft", "Enter"])
 ### 构造函数
 
 ```javascript
-// 方式一：数组 + 选项对象
-new ComboKeys(keys, options);
+// 方式一：字符串（推荐）
+new ComboKeys("Ctrl+C");
 
-// 方式二：配置对象
-new ComboKeys(config);
+// 方式二：数组
+new ComboKeys(["Ctrl", "C"]);
+
+// 方式三：配置对象
+new ComboKeys({
+  keys: "Ctrl+Shift+P",
+  timeout: 1000,
+  target: document,
+  preventDefault: true,
+  maxTriggers: Infinity,
+  debug: false,
+  callback: () => {},
+});
 ```
 
 **参数说明:**
 
-- `keys` (Array): 按键代码数组，如 `['ControlLeft', 'KeyC']`
+- `keys` (string | Array): 按键配置
+  - 字符串: `'Ctrl+C'`, `'↑↑↓↓←→BA'`, `'hello'`
+  - 数组: `['Ctrl', 'C']`, `['↑', '↑', '↓', '↓']`
 - `options/config` (Object): 配置选项
-  - `keys` (Array): 按键序列
-  - `timeout` (Number): 按键间超时时间，默认 1000ms
+  - `keys` (string | Array): 按键序列
+  - `timeout` (Number): 按键间超时时间，默认 1000ms（序列模式有效）
   - `target` (Element): 监听目标，默认 `document`
   - `preventDefault` (Boolean): 是否阻止默认行为，默认 `true`
   - `maxTriggers` (Number): 最大触发次数，默认 `Infinity`
   - `debug` (Boolean): 是否开启调试，默认 `false`
+  - `callback` (Function): 触发回调函数
 
 ### 核心方法
 
-#### `keys(keyArray)`
+#### `keys(keyString | keyArray)`
 
 设置按键序列
 
 ```javascript
-combo.keys(["ControlLeft", "KeyC"]);
+combo.keys("Ctrl+S");
+combo.keys(["Ctrl", "S"]);
 ```
 
 #### `timeout(milliseconds)`
 
-设置按键间超时时间
+设置按键间超时时间（序列模式）
 
 ```javascript
 combo.timeout(500); // 设置为500ms
@@ -137,7 +152,7 @@ combo.timeout(500); // 设置为500ms
 ```javascript
 combo.onTrigger((info) => {
   console.log("触发了！", info);
-  // info 包含: { event, triggerCount, timestamp }
+  // info 包含: { event, matched, triggerCount, timestamp }
 }, true); // 阻止默认行为（可选，默认true）
 
 // 允许默认行为
@@ -207,10 +222,12 @@ console.log(status);
 // 返回: {
 //   isListening: true,
 //   progress: "2/4",
+//   currentKeys: ['+KeyA', '+KeyB'],
 //   triggerCount: 1,
 //   maxTriggers: 3,
-//   keys: ['KeyA', 'KeyB'],
-//   target: document
+//   keys: 'Ctrl+S',
+//   target: document,
+//   mode: 'combo'
 // }
 ```
 
@@ -218,74 +235,145 @@ console.log(status);
 
 ### 核心设计理念
 
-**ComboKeys 2.0** 采用了现代化的面向对象设计，融合了多种设计模式：
+**ComboKeys 2.1** 采用现代化的单例式虚拟键盘表设计：
 
-#### 1. **事件驱动架构**
+#### 1. **虚拟键盘表**
 
-- 同时监听 `keydown` 和 `keyup` 事件，提供完整的按键生命周期控制
-- 智能模式检测：自动区分组合键模式和序列模式
-- 使用事件委托机制，高效处理按键事件
+全局维护一个虚拟键盘状态表，实时跟踪所有按键的按下/释放状态：
 
-#### 2. **状态机模式**
+```typescript
+// 全局虚拟键盘状态
+const keyboardState: Record<string, 0 | 1> = {};
 
-- 维护清晰的内部状态：`matchedKeys`、`lastKeyTime`、`triggerCount`
-- 状态转换逻辑明确：匹配 → 验证超时 → 触发/重置
-- 支持组合键和序列键的不同状态管理
+// 更新按键状态
+function updateKeyboardState(code: string, pressed: 0 | 1): void {
+  keyboardState[code] = pressed;
+}
 
-#### 3. **建造者模式**
+// 检查按键是否按下
+function isKeyPressed(code: string): boolean {
+  return keyboardState[code] === 1;
+}
+
+// 检查修饰键组（左右通用）
+function isModifierGroupPressed(modifierGroup: string[]): boolean {
+  return modifierGroup.some((code) => keyboardState[code] === 1);
+}
+```
+
+#### 2. **双模式触发机制**
+
+- **组合键模式 (combo)**：包含修饰键，同时按下时立即触发
+- **序列模式 (sequence)**：普通按键，按顺序输入后触发
+
+#### 3. **事件驱动**
+
+- 同时监听 `keydown` 和 `keyup` 事件
+- 组合键模式：只处理 `keydown`，检测所有目标键是否同时按下
+- 序列模式：处理 `keydown`，检测按键顺序是否匹配
+
+#### 4. **建造者模式**
 
 - 流式接口设计，每个配置方法返回 `this`
-- 支持链式调用，提供优雅的配置体验
-- 灵活的默认行为控制
+- 支持链式调用
 
-#### 4. **策略模式**
+### 自动模式检测
 
-- 灵活的按键解析策略：支持原始按键码和带前缀的按键码
-- 可插拔的事件处理策略
-- 组合键模式 vs 序列模式的自适应处理
+```javascript
+// 包含修饰键 → 组合键模式
+'Ctrl+C'      → mode: 'combo'
+'Ctrl+Alt+K'  → mode: 'combo'
+
+// 普通按键 → 序列模式
+'hello'       → mode: 'sequence'
+'↑↑↓↓←→BA'    → mode: 'sequence'
+```
 
 ### 两种工作模式
 
-#### 🔗 组合键模式（同时按住）
+#### 🔗 组合键模式（Combo Mode）
 
-当检测到修饰键（Ctrl、Alt、Shift、Meta）时自动启用：
+当检测到修饰键（Ctrl、Alt、Shift、Meta）时自动启用组合键模式。所有目标键同时按下时立即触发：
 
 ```javascript
-// 这些会被识别为组合键模式
-["ControlLeft", "KeyC"][("AltLeft", "Tab")][("ControlLeft", "ShiftLeft", "KeyZ")]; // Ctrl+C // Alt+Tab // Ctrl+Shift+Z
+// Ctrl+C - 触发时机：Ctrl 和 C 同时按下
+new ComboKeys("Ctrl+C").onTrigger(() => console.log("复制")).start();
+
+// Ctrl+Alt+Delete - 三键组合
+new ComboKeys("Ctrl+Alt+Delete").onTrigger(() => console.log("任务管理器")).start();
+
+// Ctrl+Alt+Shift+A - 四键组合
+new ComboKeys("Ctrl+Alt+Shift+A").onTrigger(() => console.log("四键组合触发！")).start();
 ```
 
-#### 🔢 序列模式（按顺序按键）
+**工作原理：**
 
-普通按键会被识别为序列模式：
+1. 监听所有 `keydown` 事件
+2. 更新虚拟键盘表 `keyboardState[code] = 1`
+3. 检查所有目标按键是否在虚拟键盘表中都是按下状态
+4. 如果全部按下，触发回调并重置状态
+
+#### 🔢 序列模式（Sequence Mode）
+
+普通按键（不含修饰键）自动启用序列模式。按键按顺序输入后触发：
 
 ```javascript
-// 这些会被识别为序列模式
-["KeyH", "KeyE", "KeyL", "KeyL", "KeyO"][("ArrowUp", "ArrowUp", "ArrowDown")][("KeyA", "KeyB", "KeyC")]; // H-E-L-L-O // ↑↑↓ // A-B-C
+// 科乐美秘籍
+new ComboKeys("↑↑↓↓←→←→BA")
+  .timeout(1500)
+  .onTrigger(() => console.log("秘籍激活！"))
+  .start();
+
+// 简单序列
+new ComboKeys("hello")
+  .timeout(1000)
+  .onTrigger(() => console.log("输入了 hello"))
+  .start();
 ```
 
-### 按键编码规则
+**工作原理：**
+
+1. 监听所有 `keydown` 事件
+2. 按顺序检查每个按键是否匹配
+3. 记录已匹配的按键数量
+4. 全部匹配后触发回调
+5. 如果超时未完成，重置状态
+
+### 按键格式支持
+
+ComboKeys 2.1 支持多种灵活的按键写法：
+
+#### 字符串格式（推荐）
 
 ```javascript
-// 内部编码规则
-{
-  keydown: '+',  // 按键按下前缀
-  keyup: '-'     // 按键释放前缀
-}
+// 组合键 - 用 + 连接
+new ComboKeys("Ctrl+C");
+new ComboKeys("Ctrl+Alt+Shift+K");
 
-// 组合键模式：只监听按下事件
-['ControlLeft', 'KeyC'] → ['+ControlLeft', '+KeyC']
+// 序列键 - 直接连续
+new ComboKeys("↑↑↓↓←→←→BA");
+new ComboKeys("hello");
+new ComboKeys("idkfa");
+```
 
-// 序列模式：监听按下和释放事件
-['KeyA', 'KeyB'] → ['+KeyA', '-KeyA', '+KeyB', '-KeyB']
+#### 数组格式
+
+```javascript
+// 组合键
+new ComboKeys(["Ctrl", "C"]);
+new ComboKeys(["Ctrl", "Alt", "Delete"]);
+
+// 序列键
+new ComboKeys(["↑", "↑", "↓", "↓", "←", "→", "←", "→", "B", "A"]);
+new ComboKeys(["h", "e", "l", "l", "o"]);
 ```
 
 ### 错误处理机制
 
 ```javascript
 // 参数类型验证
-if (!Array.isArray(keys)) {
-  throw new TypeError("按键序列必须是数组类型");
+if (!keys) {
+  throw new Error("按键序列不能为空");
 }
 
 // 运行时错误捕获
@@ -301,84 +389,50 @@ try {
 - **智能清理**：`stop(true)` 支持完全销毁实例
 - **事件解绑**：使用 `capture: true` 确保事件正确移除
 - **状态重置**：提供 `reset()` 方法清理中间状态
-- **防内存泄漏**：绑定事件处理器上下文，避免闭包引用
-
-### API 设计原则
-
-#### 1. **直观性**
-
-```javascript
-// ❌ 旧版本：方法名不够直观
-combo.do(callback).on();
-
-// ✅ 新版本：语义明确
-combo.onTrigger(callback).start();
-```
-
-#### 2. **一致性**
-
-```javascript
-// 所有配置方法都返回 this，支持链式调用
-combo.keys([...]).timeout(1000).onTrigger(...).start();
-```
-
-#### 3. **容错性**
-
-```javascript
-// 重复调用 start() 不会出错
-combo.start().start(); // 第二次调用会输出警告但不抛异常
-```
-
-#### 4. **可扩展性**
-
-```javascript
-// 静态常量便于扩展
-static KEY_SYMBOLS = { keydown: '+', keyup: '-' };
-static DEFAULT_OPTIONS = { /* ... */ };
-```
 
 ## 🎯 使用场景
+
+### 快捷键监听
+
+```javascript
+// 编辑器快捷键
+const shortcuts = new ComboKeys("Ctrl+Shift+P").onTrigger(() => openCommandPalette()).start();
+
+// 保存
+new ComboKeys("Ctrl+S").onTrigger(() => saveDocument()).start();
+
+// 撤销/重做
+new ComboKeys("Ctrl+Z").onTrigger(() => undo()).start();
+new ComboKeys("Ctrl+Shift+Z").onTrigger(() => redo()).start();
+```
 
 ### 游戏开发
 
 ```javascript
-// 格斗游戏招式系统
-const hadoken = new ComboKeys(["ArrowDown", "ArrowRight", "KeyP"])
-  .timeout(500)
-  .onTrigger(() => this.castFireball(), false) // 允许方向键滚动页面
-  .start();
-```
+// 移动控制
+new ComboKeys("↑").onTrigger(() => moveUp(), false).start();
+new ComboKeys("↓").onTrigger(() => moveDown(), false).start();
+new ComboKeys("←").onTrigger(() => moveLeft(), false).start();
+new ComboKeys("→").onTrigger(() => moveRight(), false).start();
 
-### Web 应用快捷键
-
-```javascript
-// 编辑器快捷键（通常需要阻止默认行为）
-const shortcuts = [
-  new ComboKeys(["ControlLeft", "KeyS"]).onTrigger(() => saveDocument()),
-  new ComboKeys(["ControlLeft", "KeyZ"]).onTrigger(() => undo()),
-  new ComboKeys(["ControlLeft", "ShiftLeft", "KeyZ"]).onTrigger(() => redo()),
-].map((combo) => combo.start());
+// 攻击
+new ComboKeys("Space").onTrigger(() => attack(), false).start();
 ```
 
 ### 隐藏功能激活
 
 ```javascript
-// 开发者工具激活
-const devMode = new ComboKeys(["KeyD", "KeyE", "KeyV"])
+// 开发者模式激活
+const devMode = new ComboKeys("DEV")
   .timeout(2000)
-  .onTrigger(() => toggleDeveloperMode(), false) // 允许字母输入
+  .onTrigger(() => toggleDeveloperMode(), false)
   .maxTriggers(1)
   .start();
-```
 
-### 安全验证
-
-```javascript
-// 管理员面板访问
-const adminAccess = new ComboKeys(["KeyA", "KeyD", "KeyM", "KeyI", "KeyN"])
-  .timeout(3000)
-  .onTrigger(() => showAdminPanel(), false) // 允许正常输入
-  .maxTriggers(3)
+// 科乐美秘籍
+new ComboKeys("↑↑↓↓←→←→BA")
+  .timeout(1500)
+  .onTrigger(() => activateCheatMode(), false)
   .start();
 ```
 
@@ -388,7 +442,7 @@ const adminAccess = new ComboKeys(["KeyA", "KeyD", "KeyM", "KeyI", "KeyN"])
 
 ```javascript
 try {
-  const combo = new ComboKeys(["ControlLeft", "KeyC"]).onTrigger(() => console.log("复制")).start();
+  const combo = new ComboKeys("Ctrl+C").onTrigger(() => console.log("复制")).start();
 } catch (error) {
   console.error("组合键创建失败:", error.message);
 }
@@ -459,18 +513,26 @@ if (isGameMode) {
 
 ```javascript
 // ES6 模块
-import ComboKeys from "./ComboKey.js";
+import ComboKeys from "./dist/index.js";
 
 // CommonJS
-const ComboKeys = require("./ComboKey.js");
+const ComboKeys = require("./dist/index.js");
 
 // 直接引入
-<script src="ComboKey.js"></script>;
+<script src="dist/index.js"></script>;
 ```
 
 ## 🚀 版本更新
 
-### v2.0.0 (当前版本)
+### v2.1.0 (当前版本)
+
+- ✨ **全新 API**：支持字符串格式 `'Ctrl+C'`，更直观易用
+- 🔗 **双模式支持**：组合键模式（同时按下）和序列键模式（顺序输入）
+- 🗂️ **虚拟键盘表**：全局状态跟踪所有按键，提升多键组合可靠性
+- 🔄 **自动模式检测**：根据按键内容自动判断触发模式
+- 📦 **精简代码**：移除 `pressedModifiers`，逻辑更清晰
+
+### v2.0.0
 
 - ✨ 全新的 API 设计，更加直观易用
 - 🔧 完善的错误处理和参数验证
